@@ -1,0 +1,364 @@
+---
+title: "EDA-Global Financial Inclusion (Global Findex) Database 2021"
+author: "Juan José Alvarado"
+date: "2025-04-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+Discovering and satisfying that curiosity proper of those who like the world of data has never been this easy. Check out this short exploratory data analysis about financial inclusion around the world!
+
+The data was gathered in more than 130 countries, interviewing people over 15 years old. You can get more information -and the raw data- about the study here: [Microdata Library World Bank](https://microdata.worldbank.org/index.php/catalog/4607/related-materials).
+
+
+
+# Packages Used and Data Load
+
+I did a little of data pre-processing using Microsoft Excel. Things like changing to "yes" or "no" type of answer instead of "1" or "2" to gain a little more of comprehension, changing fields names, etc. You will find a PDF with the variable names and definitions of the raw data alongside this file if you need to get clarification.
+
+For this project I selected only 19 out of the more than 100 available variables and made a new csv file with this data set named "financial_data.csv".
+
+The packages used in this project are **readr** to load the csv file in R and **tidyverse** for data manipulation.
+
+```{r packages, echo=TRUE}
+library(readr)
+library(tidyverse)
+```
+
+
+
+Next, load the data set with the variables you are interested in to explore and create a data frame.
+
+```{r data load, echo=TRUE}
+data <- read_csv("financial_data.csv")
+
+# Take note: if you need to set the working directory 
+# setwd("path_where_the_csv_file_is_in_your_pc")
+```
+
+# Exploring the Data
+
+Get to know the data before manipulating or visualizing anything.
+
+## First Look into the data frame
+
+```{r, echo=TRUE}
+#Data Structure
+str(data)
+
+#Numeric variable statistics resume
+summary(data)
+
+#Data set dimensions
+dim(data)
+```
+
+
+-   In this project's case I'm working with a data frame that has 143887 observations and 19 fields.
+-   Only three fields are of numerical type: pop_adult, age, year.
+
+
+## Descriptive Analysis and First Visual Look
+
+1.  We could check how many observations are by economy (country).
+
+```{r economy field, echo=TRUE}
+table(data$economy)
+```
+
+
+We can see that the observations are almost *equally distributed*: 1000 observations per economy.
+
+
+2.  We could also use graphs to gather information about the distribution of different variables. I'll do it with the fields region, gender, pop_adult, educ and age.
+
+```{r demographic variables, echo=FALSE}
+#Field: regionwb
+#Visualize the region distribution
+ggplot(data, aes(x = regionwb)) +
+  geom_bar() +
+  labs(
+    title = "Observation Distribution by Region (WB)",
+    x = "Region",
+    y = "Frequency") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle =  45, hjust = 1, size = 6))
+
+#Field: pop_adult (population over 15)
+#Visualization
+ggplot(data, aes(x = pop_adult)) +
+  geom_histogram(
+    binwidth = 10000000,
+    fill = "steelblue",
+    color = "black") +
+  labs(
+    title = "Adult population Distribution (>15)",
+    x = "Adult Population",
+    y = "Frequency") +
+  theme_minimal()
+
+#Field: Gender 
+#Visualization
+ggplot(data, aes(x = gender)) +
+  geom_bar(fill = c("lightblue", "pink")) +
+  labs(title = "Distribution by Gender",
+       x = "Gender",
+       y = "Frequency") +
+  theme_minimal()
+
+#Field: age
+summary(data$age) #There are some NA values so I created a new data frame to exclude those.
+
+not_age_na <- data %>%
+  filter(!is.na(age))
+
+#Visualization
+ggplot(not_age_na, aes(x = age)) +
+  geom_histogram(binwidth = 5,
+                 fill = "lightgreen",
+                 color = "black") +
+  labs(title = "Distribution by Age",
+       x = "Age",
+       y = "Frequency") +
+  theme_minimal()
+
+#Field: educ (Education)
+table(data$educ)
+#Visualization
+ggplot(data, aes(x = educ)) +
+  geom_bar(fill = "orange") +
+  labs(title = "Education Level Distribution",
+       x = "Education Level",
+       y = "Frequency") +
+  theme_minimal()
+
+#Field: urbanicity (housing area)
+table(data$urbanicity_fUrbanf)
+#Visualization
+ggplot(data, aes(x = urbanicity_fUrbanf)) +
+  geom_bar(fill = "purple") +
+  labs(title = "Housing area Distribution",
+       x = "Housing Area",
+       y = "Frequency") +
+  theme_minimal()
+
+```
+
+
+1.  From the **region** variable we got that high income interviewees and people from the sub Saharan Africa have more presence in the data.
+
+2.  The population has a tendency to not be large. Is more frequent economies or regions with moderate or small population numbers.
+
+3.  Male and Female are almost equally represented in the data. And most of the interviewees are in between 25 to 40 years old.
+
+4.  Most of the interviewees have secondary education.
+
+5.  Finally the data collected shows that any relation of other variables with the housing area can´t be conclusive as we have to many NA values.
+
+
+We can get also some intricate information about the demographics of the interviewees:
+
+```{r more demographics, echo=FALSE}
+# Age vs Gender
+ggplot(not_age_na, aes(x = age, fill = gender)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Age by Gender Distribution",
+       x = "Age",
+       y = "Density",
+       fill = "Gender") +
+  theme_minimal()
+
+# Difference in Population by Region
+ggplot(data, aes(x = regionwb, y = pop_adult, fill = regionwb)) +
+  geom_boxplot() +
+  labs(title = "Adult Population by Region (WB)",
+       x = "Region",
+       y = "Adult Population") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6),
+        legend.position = "none")
+```
+
+1.  The distribution of ages by gender is almost identical.
+
+2.  There are considerable differences between the population interviewed for each region. Also there are some regions with economies with significantly larger population from the mean.
+
+# Frequency Analysis Visualization
+
+## Proportions
+
+Now is time to get our hands on the financial inclusion information with categorical variables.
+
+This will give us a general idea of labor force participation, financial inclusion, savings, debt, digital payment use, mobile phone ownership, and internet access in the sample.
+
+It will be easier if you can define a function to create the proportion graphs to visualize the categorical variables.
+
+Here you can check the one I used:
+
+```{r graph function, echo=TRUE}
+proportion_plot <- function(variable, title){
+  prop_table <- prop.table(table(variable))
+  df_prop <- data.frame(Result = names(prop_table),
+                        Proportion = as.numeric(prop_table))
+  
+  ggplot(df_prop, aes(x = Result, y = Proportion, fill = Result)) +
+    geom_bar(stat = "identity") +
+    geom_text(aes(label = scales::percent(Proportion)), vjust = -0.3) +
+    labs(title = title, x = NULL, y = "Proportion") +
+    scale_y_continuous(labels = scales::percent) +
+    theme_minimal() +
+    theme(legend.position = "none")
+}
+```
+
+Now you only need to call the function, enter the variable you want to visualize and give the graph a title:
+
+```{r proportion visuals, echo=TRUE}
+proportion_plot(data$emp_in, "People in Working Force")
+proportion_plot(data$account, "People with Financial Account")
+proportion_plot(data$saved, "People with Savings")
+proportion_plot(data$borrowed, "People who have taken out a Loan")
+proportion_plot(data$anydigpayment, "People who have made a digital payment")
+proportion_plot(data$mobileowner, "People who owns a Mobile Device")
+proportion_plot(data$internetaccess, "People with Internet Access")
+```
+
+-   We got that **most** of the people are in the working force, **have** a financial account, **half of them** have savings, **half of them** have taken out a loan.
+
+-   **65% of interviewees** have made a digital payment, the **majority** owns a mobile device and have internet access.
+
+## Categorical Variables vs Demographics
+
+Discover how these categorical variables are distributed among the different categories of our demographic variables has immense value. I used basic bar graphs to showcase the results.
+
+```{r categorical vs demographic, echo=FALSE}
+# Gender vs Financial Inclusion
+ggplot(data, aes(x = gender, fill = account)) +
+  geom_bar(position = "dodge") + #"dodge" for side to side bars
+  labs(title = "Financial Account by Gender",
+       x = "Gender",
+       y = "Frequency",
+       fill = "Has an Account") +
+  theme_minimal()
+
+# Education vs Internet Access
+ggplot(data, aes(x = educ, fill = internetaccess)) +
+  geom_bar(position = "fill") + #"fill" to get proportion to each category
+  labs(title = "Internet Acces by Education Level",
+       x = "Educational Level",
+       y = "Proportion",
+       fill = "Internet Access") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Housing Area vs Digital Payments
+ggplot(data, aes(x = urbanicity_fUrbanf, fill = anydigpayment)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Any Digital Payment by Housing Area",
+       x = "Housing Area",
+       y = "Frequency",
+       fill = "Use Digital Payment") +
+  theme_minimal()
+```
+
+1.  We found that the majority of males and females interviewed have a financial account.
+
+2.  We can see people with more educational level has a tendency to have internet access.
+
+3.  As was said previously, we can't get conclusive information using the housing area but we can use it to get an idea of how could it be. We can see that people living in urban areas are more or less likely to have made a digital payment before.
+
+### Distribution Analysis by Category
+
+We can also show the distribution of categorical variables with multiple levels (not only with binary answers) and compare them.
+
+In this section we'll explore the distribution of these variables first, and then the comparison between them and some demographic variables as we did previously.
+
+As always creating a function to do the proportion bar graphs will make it quick and easier:
+
+```{r function2, echo=TRUE}
+distribution_plot <- function(variable, title){
+  df_freq <- as.data.frame(table(variable))
+  colnames(df_freq) <- c("Category", "Frequency")
+  
+  ggplot(df_freq, aes(x = Category, y = Frequency, fill = Category)) +
+    geom_bar(stat = "identity") +
+    geom_text(aes(label = Frequency), vjust = -0.3) +
+    labs(title = title, x = NULL, y = "Frequency") +
+    theme_minimal() +
+    theme(legend.position = "right",
+          axis.text.x = element_text(angle = 45, hjust = 1))
+}
+```
+
+Now we will explore the variables with multiple categorical levels:
+
+```{r distributions, echo=TRUE}
+distribution_plot(data$receive_wages, "Wage Reception Distribution")
+distribution_plot(data$receive_pension, "Pension Reception Distribution")
+distribution_plot(data$receive_agriculture, "Agricultural Payments Reception Distribution")
+```
+
+-   It is interesting to see that most of the interviewees have never received a salary; maybe they have an income but not in the form of a salary.
+
+-   Also most of them never received a pension. We have to consider that most of the interviewees are under 40 years old.
+
+-   Finally most of the people have never received a payment by selling or offering agricultural goods or services.
+
+To conclude this project I want to know how some of the demographic variables relate to these last categorical data.
+
+```{r, echo=FALSE}
+#Gender vs Wage Reception
+ggplot(data, aes(x = gender, fill = receive_wages)) +
+  geom_bar(position = "fill") +
+  labs(title = "Salary Reception by Gender",
+       x = "Gender",
+       y = "Proportion",
+       fill = "Reception Method") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() 
+
+#Educational Level vs Receiving Pension
+ggplot(data, aes(x = educ, fill = receive_pension)) +
+  geom_bar(position = "fill") +
+  labs(title = "Educational Level",
+       x = "Educational Level",
+       y = "Proportion",
+       fill = "Reception Method") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#Having an account vs Receiving Wages
+ggplot(data, aes(x = account, fill = receive_wages)) +
+  geom_bar(position = "fill") +
+  labs(title = "Having an Account vs Receive Wages",
+       x = "Has an Account",
+       y = "Proportion",
+       fill = "Reception Method") +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal()
+```
+
+1.  Both female and male interviewees have almost the same wage reception distribution. Have in mind that most of them are from high income status so it could be biased.
+
+2.  Having high scholar education doesn't mean that they will received a pension it seems. But again, most of the people in the data have less than 40 years old.
+
+3.  Clearly having a financial account facilitates to have a salary although there is more than 50% that never received a salary and have an account.
+
+# Overview
+
+It is impressive how easy and quick you can extract valuable information from any kind of data just by understanding the structure it has and what it measures or describes.
+
+Visualizing the data is always better when you want to understand what is happening, it allows you to catch trending and patterns.
+
+I only did a few demonstrations of what kind of information you can gather but you can always explore further an get the most intricate data results as you want.
+
+How does mobile phone ownership vary by region? Is savings related to educational level? Could it be relevant to analyze the proportion of "not available" in different groups? Just to name a few.
+
+The important thing is you only need curiosity and data to do great things!
