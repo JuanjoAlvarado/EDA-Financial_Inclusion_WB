@@ -1,0 +1,1 @@
+To see the rendered version of the HTML file you can use the following: https://htmlpreview.github.io/?https://github.com/JuanjoAlvarado/EDA-Financial_Inclusion_WB/blob/master/EDA-with-RStudio.html and paste it in your browser.
